@@ -1,0 +1,212 @@
+//#pragma kernel CSMain
+
+//struct Particle
+//{
+//    float3 position;
+//    float3 velocity;
+//    float density;
+//    float pressure;
+//};
+
+//RWStructuredBuffer<Particle> particles;
+
+//float deltaTime;
+//float3 localEffectiveGravity;
+//uint totalParticles;
+
+//float cylinderRadius;
+//float cylinderHeight;
+
+//float smoothingRadius = 0.15f;
+//float targetDensity = 50f;
+//float pressureMultiplier = 200f;
+//float viscosity = 0.05f;
+
+//[numthreads(64, 1, 1)]
+//void CSMain(uint3 id : SV_DispatchThreadID)
+//{
+//    uint i = id.x;
+//    if (i >= totalParticles)
+//        return;
+
+//    // --- 1. ???? ??????? ?????? ---
+//    float density = 0;
+//    for (uint j = 0; j < totalParticles; j++)
+//    {
+//        float3 offset = particles[i].position - particles[j].position;
+//        float dist = length(offset);
+//        if (dist < smoothingRadius)
+//        {
+//            float influence = smoothingRadius - dist;
+//            density += influence * influence;
+//        }
+//    }
+//    particles[i].density = max(density, 0.0001f);
+//    particles[i].pressure = (particles[i].density - targetDensity) * pressureMultiplier;
+
+//    // ?? ????? ??? GroupMemoryBarrierWithGroupSync ?? ??? ????? ??? ???????
+
+//    // --- 2. ???? ????? ??????? ---
+//    float3 pressureForce = float3(0, 0, 0);
+//    float3 viscosityForce = float3(0, 0, 0);
+
+//    for (uint k = 0; k < totalParticles; k++)
+//    {
+//        if (i == k)
+//            continue;
+//        float3 offset = particles[i].position - particles[k].position;
+//        float dist = length(offset);
+
+//        if (dist < smoothingRadius && dist > 0.0001f)
+//        {
+//            float3 dir = offset / dist;
+//            float influence = smoothingRadius - dist;
+
+//            float sharedPressure = (particles[i].pressure + particles[k].pressure) / 2.0f;
+//            pressureForce += dir * sharedPressure * influence / particles[k].density;
+
+//            float3 relVel = particles[k].velocity - particles[i].velocity;
+//            viscosityForce += relVel * influence * viscosity / particles[k].density;
+//        }
+//    }
+
+//    // ????? ????? ????????? ???????
+//    float3 totalForce = pressureForce + viscosityForce;
+//    particles[i].velocity += (totalForce / particles[i].density) * deltaTime;
+//    particles[i].velocity += localEffectiveGravity * deltaTime;
+//    particles[i].position += particles[i].velocity * deltaTime;
+
+//    // --- 3. ?????? ????????? ???????? ---
+//    float halfHeight = cylinderHeight / 2.0f;
+//    float padding = 0.05f;
+
+//    // ?????? ????? ???
+//    if (particles[i].position.y < -halfHeight + padding)
+//    {
+//        particles[i].position.y = -halfHeight + padding;
+//        particles[i].velocity.y *= -0.5f;
+//    }
+
+//    // ???????? ???????? ????????
+//    float2 posXZ = float2(particles[i].position.x, particles[i].position.z);
+//    float distXZ = length(posXZ);
+//    float maxRadius = cylinderRadius - padding;
+
+//    if (distXZ > maxRadius)
+//    {
+//        float2 normalXZ = posXZ / distXZ;
+//        particles[i].position.x = normalXZ.x * maxRadius;
+//        particles[i].position.z = normalXZ.y * maxRadius;
+        
+//        float3 normal = float3(normalXZ.x, 0, normalXZ.y);
+//        particles[i].velocity -= normal * dot(particles[i].velocity, normal) * 1.5f;
+//    }
+//}
+
+
+
+
+
+
+#pragma kernel CSMain
+
+struct Particle
+{
+    float3 position;
+    float3 velocity;
+    float density;
+    float pressure;
+};
+
+RWStructuredBuffer<Particle> particles;
+
+float deltaTime;
+float3 localEffectiveGravity;
+uint totalParticles;
+
+float cylinderRadius;
+float cylinderHeight;
+
+float smoothingRadius = 0.15f;
+float targetDensity = 50.0f; // Fixed: Added .0
+float pressureMultiplier = 200.0f; // Fixed: Added .0
+float viscosity = 0.05f;
+
+[numthreads(64, 1, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    uint i = id.x;
+    if (i >= totalParticles)
+        return;
+
+    // --- 1. Calculate Density and Pressure ---
+    float density = 0;
+    for (uint j = 0; j < totalParticles; j++)
+    {
+        float3 offset = particles[i].position - particles[j].position;
+        float dist = length(offset);
+        if (dist < smoothingRadius)
+        {
+            float influence = smoothingRadius - dist;
+            density += influence * influence;
+        }
+    }
+    particles[i].density = max(density, 0.0001f);
+    particles[i].pressure = (particles[i].density - targetDensity) * pressureMultiplier;
+
+    // --- 2. Calculate Forces ---
+    float3 pressureForce = float3(0, 0, 0);
+    float3 viscosityForce = float3(0, 0, 0);
+
+    for (uint k = 0; k < totalParticles; k++)
+    {
+        if (i == k)
+            continue;
+        float3 offset = particles[i].position - particles[k].position;
+        float dist = length(offset);
+
+        if (dist < smoothingRadius && dist > 0.0001f)
+        {
+            float3 dir = offset / dist;
+            float influence = smoothingRadius - dist;
+
+            float sharedPressure = (particles[i].pressure + particles[k].pressure) / 2.0f;
+            pressureForce += dir * sharedPressure * influence / particles[k].density;
+
+            float3 relVel = particles[k].velocity - particles[i].velocity;
+            viscosityForce += relVel * influence * viscosity / particles[k].density;
+        }
+    }
+
+    // Apply forces and integrate
+    float3 totalForce = pressureForce + viscosityForce;
+    particles[i].velocity += (totalForce / particles[i].density) * deltaTime;
+    particles[i].velocity += localEffectiveGravity * deltaTime;
+    particles[i].position += particles[i].velocity * deltaTime;
+
+    // --- 3. Resolve Collisions ---
+    float halfHeight = cylinderHeight / 2.0f;
+    float padding = 0.05f;
+
+    // Floor collision
+    if (particles[i].position.y < -halfHeight + padding)
+    {
+        particles[i].position.y = -halfHeight + padding;
+        particles[i].velocity.y *= -0.5f;
+    }
+
+    // Cylinder wall collision
+    float2 posXZ = float2(particles[i].position.x, particles[i].position.z);
+    float distXZ = length(posXZ);
+    float maxRadius = cylinderRadius - padding;
+
+    if (distXZ > maxRadius)
+    {
+        float2 normalXZ = posXZ / distXZ;
+        particles[i].position.x = normalXZ.x * maxRadius;
+        particles[i].position.z = normalXZ.y * maxRadius;
+        
+        float3 normal = float3(normalXZ.x, 0, normalXZ.y);
+        particles[i].velocity -= normal * dot(particles[i].velocity, normal) * 1.5f;
+    }
+}
