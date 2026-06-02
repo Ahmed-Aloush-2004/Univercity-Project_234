@@ -17,10 +17,11 @@
 //float cylinderRadius;
 //float cylinderHeight;
 
-//float smoothingRadius = 0.15f;
-//float targetDensity = 50f;
-//float pressureMultiplier = 200f;
-//float viscosity = 0.05f;
+//// ????????? ?????????? ???????? ???? ?? C#
+//float smoothingRadius;
+//float targetDensity;
+//float pressureMultiplier;
+//float viscosity;
 
 //[numthreads(64, 1, 1)]
 //void CSMain(uint3 id : SV_DispatchThreadID)
@@ -42,11 +43,11 @@
 //        }
 //    }
 //    particles[i].density = max(density, 0.0001f);
-//    particles[i].pressure = (particles[i].density - targetDensity) * pressureMultiplier;
+    
+//    // ??? ????? ?????? (????? ????? ??????)
+//    particles[i].pressure = max(0.0f, (particles[i].density - targetDensity) * pressureMultiplier);
 
-//    // ?? ????? ??? GroupMemoryBarrierWithGroupSync ?? ??? ????? ??? ???????
-
-//    // --- 2. ???? ????? ??????? ---
+//    // --- 2. ???? ????? ---
 //    float3 pressureForce = float3(0, 0, 0);
 //    float3 viscosityForce = float3(0, 0, 0);
 
@@ -70,24 +71,37 @@
 //        }
 //    }
 
-//    // ????? ????? ????????? ???????
+//    // ????? ?????
 //    float3 totalForce = pressureForce + viscosityForce;
 //    particles[i].velocity += (totalForce / particles[i].density) * deltaTime;
 //    particles[i].velocity += localEffectiveGravity * deltaTime;
+
+//    // --- ???? ?????? (Speed Limit) ???? ???????? ??????? (NaN) ---
+//    float speed = length(particles[i].velocity);
+//    if (speed > 15.0f) // ???? ?????? ??????
+//    {
+//        particles[i].velocity = (particles[i].velocity / speed) * 15.0f;
+//    }
+//    // -----------------------------------------------------------
+
+//    // ????? ??????
 //    particles[i].position += particles[i].velocity * deltaTime;
 
-//    // --- 3. ?????? ????????? ???????? ---
+//    // --- 3. ?? ?????????? ---
 //    float halfHeight = cylinderHeight / 2.0f;
 //    float padding = 0.05f;
 
-//    // ?????? ????? ???
+//    // ?????? ???????
 //    if (particles[i].position.y < -halfHeight + padding)
 //    {
 //        particles[i].position.y = -halfHeight + padding;
-//        particles[i].velocity.y *= -0.5f;
+//        if (particles[i].velocity.y < 0)
+//        {
+//            particles[i].velocity.y *= -0.3f;
+//        }
 //    }
 
-//    // ???????? ???????? ????????
+//    // ?????? ???? ?????????
 //    float2 posXZ = float2(particles[i].position.x, particles[i].position.z);
 //    float distXZ = length(posXZ);
 //    float maxRadius = cylinderRadius - padding;
@@ -99,9 +113,20 @@
 //        particles[i].position.z = normalXZ.y * maxRadius;
         
 //        float3 normal = float3(normalXZ.x, 0, normalXZ.y);
-//        particles[i].velocity -= normal * dot(particles[i].velocity, normal) * 1.5f;
+//        float velAlongNormal = dot(particles[i].velocity, normal);
+        
+//        if (velAlongNormal > 0)
+//        {
+//            particles[i].velocity -= normal * velAlongNormal * 1.3f;
+//        }
 //    }
 //}
+
+
+
+
+
+
 
 
 
@@ -127,10 +152,10 @@ uint totalParticles;
 float cylinderRadius;
 float cylinderHeight;
 
-float smoothingRadius = 0.15f;
-float targetDensity = 50.0f; // Fixed: Added .0
-float pressureMultiplier = 200.0f; // Fixed: Added .0
-float viscosity = 0.05f;
+float smoothingRadius;
+float targetDensity;
+float pressureMultiplier;
+float viscosity;
 
 [numthreads(64, 1, 1)]
 void CSMain(uint3 id : SV_DispatchThreadID)
@@ -139,7 +164,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     if (i >= totalParticles)
         return;
 
-    // --- 1. Calculate Density and Pressure ---
+    // --- 1. ???? ??????? ?????? ---
     float density = 0;
     for (uint j = 0; j < totalParticles; j++)
     {
@@ -152,9 +177,9 @@ void CSMain(uint3 id : SV_DispatchThreadID)
         }
     }
     particles[i].density = max(density, 0.0001f);
-    particles[i].pressure = (particles[i].density - targetDensity) * pressureMultiplier;
+    particles[i].pressure = max(0.0f, (particles[i].density - targetDensity) * pressureMultiplier);
 
-    // --- 2. Calculate Forces ---
+    // --- 2. ???? ????? ---
     float3 pressureForce = float3(0, 0, 0);
     float3 viscosityForce = float3(0, 0, 0);
 
@@ -170,32 +195,63 @@ void CSMain(uint3 id : SV_DispatchThreadID)
             float3 dir = offset / dist;
             float influence = smoothingRadius - dist;
 
+            // ??????? ??????: ??? ?????? ??? ??? ??? ????? ?????? ???????? ??????
+            float safeKDensity = max(particles[k].density, 0.0001f);
+
             float sharedPressure = (particles[i].pressure + particles[k].pressure) / 2.0f;
-            pressureForce += dir * sharedPressure * influence / particles[k].density;
+            pressureForce += dir * sharedPressure * influence / safeKDensity;
 
             float3 relVel = particles[k].velocity - particles[i].velocity;
-            viscosityForce += relVel * influence * viscosity / particles[k].density;
+            viscosityForce += relVel * influence * viscosity / safeKDensity;
         }
     }
 
-    // Apply forces and integrate
+    // ????? ?????
     float3 totalForce = pressureForce + viscosityForce;
     particles[i].velocity += (totalForce / particles[i].density) * deltaTime;
     particles[i].velocity += localEffectiveGravity * deltaTime;
-    particles[i].position += particles[i].velocity * deltaTime;
 
-    // --- 3. Resolve Collisions ---
+    // --- ??????? ???????: ???? ??? NaN ????? ?????? ---
+    // ??? ????? ?????? ???? ??? ?????? ?? ???????? ?????
+    if (any(isnan(particles[i].velocity)) || any(isinf(particles[i].velocity)))
+    {
+        particles[i].velocity = float3(0, 0, 0);
+    }
+    else
+    {
+        // ??? ???? ?????? ?????? ???? ???? ?? ?????? ???? ???????
+        float speed = length(particles[i].velocity);
+        if (speed > 15.0f)
+        {
+            particles[i].velocity = (particles[i].velocity / speed) * 15.0f;
+        }
+    }
+    // ----------------------------------------------------
+
+    // ????? ??????
+    particles[i].position += particles[i].velocity * deltaTime;
+    
+    // ?????? ?? ?? ?????? ?? ????? ?????
+    if (any(isnan(particles[i].position)) || any(isinf(particles[i].position)))
+    {
+        particles[i].position = float3(0, 0, 0);
+    }
+
+    // --- 3. ?? ?????????? ---
     float halfHeight = cylinderHeight / 2.0f;
     float padding = 0.05f;
 
-    // Floor collision
+    // ?????? ???????
     if (particles[i].position.y < -halfHeight + padding)
     {
         particles[i].position.y = -halfHeight + padding;
-        particles[i].velocity.y *= -0.5f;
+        if (particles[i].velocity.y < 0)
+        {
+            particles[i].velocity.y *= -0.3f;
+        }
     }
 
-    // Cylinder wall collision
+    // ?????? ???? ?????????
     float2 posXZ = float2(particles[i].position.x, particles[i].position.z);
     float distXZ = length(posXZ);
     float maxRadius = cylinderRadius - padding;
@@ -207,6 +263,11 @@ void CSMain(uint3 id : SV_DispatchThreadID)
         particles[i].position.z = normalXZ.y * maxRadius;
         
         float3 normal = float3(normalXZ.x, 0, normalXZ.y);
-        particles[i].velocity -= normal * dot(particles[i].velocity, normal) * 1.5f;
+        float velAlongNormal = dot(particles[i].velocity, normal);
+        
+        if (velAlongNormal > 0)
+        {
+            particles[i].velocity -= normal * velAlongNormal * 1.3f;
+        }
     }
 }
