@@ -168,7 +168,7 @@ MonoBehaviour:
   ropeLength: 3
   gravity: 9.81
   startThetaDegrees: 45
-  startPhiVelocity: 1.5
+  startPhiVelocity: 0.2
   effectiveGravity: {x: 0, y: 0, z: 0}
   damping: 0.995
 --- !u!1 &330585543
@@ -340,13 +340,16 @@ MonoBehaviour:
   bucketFluidShader: {fileID: 7200000, guid: ee124437a41aaff41883885f9dd6711f, type: 3}
   bucketKinematics: {fileID: 59034029}
   paintBucket: {fileID: 2057585892}
-  particleAmount: 6000
-  cylinderRadius: 0.5
-  cylinderHeight: 2
+  particleAmount: 3000
+  cylinderRadius: 0.46
+  cylinderHeight: 1.8
+  holeRadius: 0.1
   smoothingRadius: 0.15
-  targetDensity: 45
-  pressureMultiplier: 350
-  viscosity: 0.05
+  targetDensity: 25
+  pressureMultiplier: 800
+  baseViscosity: 0.5
+  minViscosity: 0.01
+  shearThinningCoeff: 5
   particleMesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
   particleMaterial: {fileID: 2100000, guid: d98675f044477f441ac75b303d0608fd, type: 2}
   particleRenderSize: 0.15
@@ -457,7 +460,7 @@ Transform:
   m_GameObject: {fileID: 410087039}
   serializedVersion: 2
   m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
-  m_LocalPosition: {x: 0, y: 3, z: 0}
+  m_LocalPosition: {x: 2.91, y: 5.82, z: -1.04}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
