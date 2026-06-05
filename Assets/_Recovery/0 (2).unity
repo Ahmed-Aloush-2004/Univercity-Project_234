@@ -340,13 +340,13 @@ MonoBehaviour:
   bucketFluidShader: {fileID: 7200000, guid: ee124437a41aaff41883885f9dd6711f, type: 3}
   bucketKinematics: {fileID: 59034029}
   paintBucket: {fileID: 2057585892}
-  particleAmount: 6000
+  particleAmount: 7000
   cylinderRadius: 0.46
   cylinderHeight: 1.8
   holeRadius: 0.2
   smoothingRadius: 0.15
-  targetDensity: 25
-  pressureMultiplier: 800
+  targetDensity: 0.25
+  pressureMultiplier: 100
   baseViscosity: 0.5
   minViscosity: 0.01
   shearThinningCoeff: 5
@@ -570,13 +570,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2057585891}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
   m_LocalPosition: {x: 0, y: -3, z: 0}
-  m_LocalScale: {x: 1, y: 0.5, z: 1}
+  m_LocalScale: {x: 10, y: 10, z: 10}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 59034028}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
 --- !u!23 &2057585893
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -633,7 +633,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2057585891}
-  m_Mesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
